@@ -11,16 +11,16 @@ def mean(vector):
 
 def stdev(vector):
     average = mean(vector)
-    return math.sqrt((sum((x-average)**2 for x in vector))/max(1,len(vector)-1))
+    return math.sqrt((sum((x-average)**2 for x in vector))/max(1, len(vector)-1))
 
 
-def divide_by_class(X,Y):
-    result=dict()
-    for x,y in zip(X,Y):
+def divide_by_class(X, Y):
+    result = dict()
+    for x, y in zip(X, Y):
         if y in result:
-            result[y]=np.append(result[y],[x],axis=0)
+            result[y] = np.append(result[y], [x], axis=0)
         else:
-            result[y]=np.array([x])
+            result[y] = np.array([x])
     return result
 
 
@@ -42,8 +42,8 @@ class NaiveBayesNominal:
             self.possible_results.append(key)
             # x_prob = [{key:item/len(line) for key,item in Counter(line).items()} for line in values.T]
             for line in values.T:
-                x_prob.append({key:item/len(line) for key,item in Counter(line).items()})
-            self.probabilities[key]=(x_prob)
+                x_prob.append({key : item/len(line) for key, item in Counter(line).items()})
+            self.probabilities[key] = x_prob
         self.possible_results.sort()
 
     def predict_proba(self, X):
@@ -52,9 +52,9 @@ class NaiveBayesNominal:
             probabilities = []
             for y in self.possible_results:
                 P = self.y_probabilities[y]
-                for i,x_i in enumerate(x):
+                for i, x_i in enumerate(x):
                     prob_i = self.probabilities[y][i][x_i]
-                    P=P*prob_i
+                    P = P * prob_i
                 probabilities.append(P)
             result.append(probabilities)
         return np.array(result)
@@ -72,17 +72,17 @@ class NaiveBayesGaussian:
         self.stdev_coef = {}
         self.possible_results=[]
         self.y_probabilities={}
-        divided_by_class=divide_by_class(X,y)
+        divided_by_class=divide_by_class(X, y)
         for key,values in divided_by_class.items():
-            self.y_probabilities[key]=len(values)/len(X)
-            means=[]
-            stdevs=[]
+            self.y_probabilities[key] = len(values)/len(X)
+            means = []
+            stdevs = []
             self.possible_results.append(key)
             for line in values.T:
                 means.append(mean(line))
                 stdevs.append(stdev(line))
-            self.mean_coef[key]=(means)
-            self.stdev_coef[key]=(stdevs)
+            self.mean_coef[key] = means
+            self.stdev_coef[key] = stdevs
         self.possible_results.sort()
         return self
 
@@ -92,8 +92,8 @@ class NaiveBayesGaussian:
         for x in X:
             probabilities=[]
             for y in self.possible_results:
-                values = norm.pdf(x,loc=self.mean_coef[y],scale=self.stdev_coef[y])
-                P=self.y_probabilities[y]*reduce(lambda x,y:x*y,values)
+                values = norm.pdf(x, loc=self.mean_coef[y], scale=self.stdev_coef[y])
+                P=self.y_probabilities[y]*reduce(lambda x, y : x*y, values)
                 probabilities.append(P)
             result.append(probabilities)
         return np.array(result)
