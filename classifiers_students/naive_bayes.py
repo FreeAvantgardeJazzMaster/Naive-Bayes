@@ -5,24 +5,24 @@ from sklearn.base import BaseEstimator
 from functools import reduce
 from collections import Counter
 
-
 def mean(vector):
-    return sum(vector) / len(vector)
+    return sum(vector)/len(vector)
 
 
 def stdev(vector):
     average = mean(vector)
-    return math.sqrt((sum((x - average) ** 2 for x in vector)) / max(1, len(vector) - 1))
+    return math.sqrt((sum((x-average)**2 for x in vector))/max(1, len(vector)-1))
 
 
-def createFeatureClassDictionary(X, Y):
-    featureClassDict = dict()
+def divide_by_class(X, Y):
+    result = dict()
     for x, y in zip(X, Y):
-        if y in featureClassDict:
-            featureClassDict[y] = np.append(featureClassDict[y], [x], axis=0)
+        if y in result:
+            result[y] = np.append(result[y], [x], axis=0)
         else:
-            featureClassDict[y] = np.array([x])
-    return featureClassDict
+            result[y] = np.array([x])
+    return result
+
 
 
 class NaiveBayesNominal:
@@ -30,72 +30,71 @@ class NaiveBayesNominal:
         self.classes_ = None
         self.model = dict()
         self.y_prior = []
-        self.probabilities = {}
-        self.class_probabilities = {}
-        self.classes = []
-        self.featureProbabilities = []
-        self.featureClassDict = {}
 
     def fit(self, X, y):
-        self.featureClassDict = createFeatureClassDictionary(X, y)
-        for key in self.featureClassDict.keys():
-            self.classes.append(key)
-            self.class_probabilities[key] = len(self.featureClassDict.get(key)) / len(X)
-            self.featureProbabilities = [{key: item / len(line) for key, item in Counter(line).items()} for line in
-                                         self.featureClassDict.get(key).T]
-            self.probabilities[key] = self.featureProbabilities
-        self.classes.sort()
+        self.probabilities={}
+        self.possible_results=[]
+        self.y_probabilities={}
+        divided_by_class=divide_by_class(X,y)
+        for key,values in divided_by_class.items():
+            self.y_probabilities[key]=len(values)/len(X)
+            x_prob=[]
+            self.possible_results.append(key)
+            # x_prob = [{key:item/len(line) for key,item in Counter(line).items()} for line in values.T]
+            for line in values.T:
+                x_prob.append({key : item/len(line) for key, item in Counter(line).items()})
+            self.probabilities[key] = x_prob
+        self.possible_results.sort()
 
-    def predict_proba(self, features):
+    def predict_proba(self, X):
         result = []
-        for feature in features:
+        for x in X:
             probabilities = []
-            for y in self.classes:
-                class_probability = self.class_probabilities[y]
-                for value, featureValue in enumerate(feature):
-                    value_probability = self.probabilities[y][value][featureValue]
-                    class_probability = class_probability * value_probability
-                probabilities.append(class_probability)
+            for y in self.possible_results:
+                P = self.y_probabilities[y]
+                for i, x_i in enumerate(x):
+                    prob_i = self.probabilities[y][i][x_i]
+                    P = P * prob_i
+                probabilities.append(P)
             result.append(probabilities)
         return np.array(result)
 
-    def predict(self, features):
-        result = self.predict_proba(features)
-        return [list(row).index(max(row)) for row in result]
-
+    def predict(self, X):
+        x = self.predict_proba(X)
+        return [list(row).index(max(row)) for row in x]
 
 class NaiveBayesGaussian:
     def __init__(self):
-        self.mean_coef = {}
-        self.stdev_coef = {}
-        self.classes = []
-        self.class_probabilities = {}
-        self.featureClassDict = {}
+        pass
 
     def fit(self, X, y):
-        self.featureClassDict = createFeatureClassDictionary(X, y)
-        for key in self.featureClassDict.keys():
-            self.class_probabilities[key] = len(self.featureClassDict.get(key)) / len(X)
+        self.mean_coef = {}
+        self.stdev_coef = {}
+        self.possible_results=[]
+        self.y_probabilities={}
+        divided_by_class=divide_by_class(X, y)
+        for key,values in divided_by_class.items():
+            self.y_probabilities[key] = len(values)/len(X)
             means = []
             stdevs = []
-            values = np.array(self.featureClassDict.get(key))
-            self.classes.append(key)
+            self.possible_results.append(key)
             for line in values.T:
                 means.append(mean(line))
                 stdevs.append(stdev(line))
             self.mean_coef[key] = means
             self.stdev_coef[key] = stdevs
-        self.classes.sort()
+        self.possible_results.sort()
         return self
 
-    def predict_proba(self, features):
-        result = []
-        for x in features:
-            probabilities = []
-            for y in self.classes:
+
+    def predict_proba(self, X):
+        result=[]
+        for x in X:
+            probabilities=[]
+            for y in self.possible_results:
                 values = norm.pdf(x, loc=self.mean_coef[y], scale=self.stdev_coef[y])
-                probability = self.class_probabilities[y] * reduce(lambda x, y: x * y, values)
-                probabilities.append(probability)
+                P=self.y_probabilities[y]*reduce(lambda x, y : x*y, values)
+                probabilities.append(P)
             result.append(probabilities)
         return np.array(result)
 
@@ -116,7 +115,6 @@ class NaiveBayesNumNom(BaseEstimator):
         else:
             self.nb = NaiveBayesGaussian()
         self.nb.fit(X, y)
-
     def predict_proba(self, X):
         return self.nb.predict_proba(X)
 
