@@ -105,13 +105,18 @@ class NaiveBayesGaussian:
 
 class NaiveBayesNumNom(BaseEstimator):
     def __init__(self, is_cat=None, m=0.0):
-        raise NotImplementedError
+        self.is_cat = is_cat
+        self.m = m
+        self.nb = None
 
-    def fit(self, X, yy):
-        raise NotImplementedError
-
+    def fit(self, X, y):
+        if self.is_cat:
+            self.nb = NaiveBayesNominal()
+        else:
+            self.nb = NaiveBayesGaussian()
+        self.nb.fit(X, y)
     def predict_proba(self, X):
-        raise NotImplementedError
+        return self.nb.predict_proba(X)
 
     def predict(self, X):
-        raise NotImplementedError
+        return self.nb.predict(X)
